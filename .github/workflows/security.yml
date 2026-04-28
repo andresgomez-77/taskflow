@@ -1,0 +1,54 @@
+name: Security
+
+on:
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    # Corre cada lunes a las 9am UTC — buena práctica en equipos reales
+    - cron: "0 9 * * 1"
+
+jobs:
+  frontend-security:
+    name: Frontend — Security audit
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # --audit-level=critical: solo falla en vulnerabilidades críticas.
+      # En proyectos reales no bloqueas el CI por vulnerabilidades de dependencias
+      # transitivas que no controlas — solo por las críticas.
+      - name: Security audit
+        run: npm audit --audit-level=critical
+
+  backend-security:
+    name: Backend — Security audit
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Security audit
+        run: npm audit --audit-level=critical
