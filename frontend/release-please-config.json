@@ -1,0 +1,12 @@
+{
+  "packages": {
+    "frontend": {
+      "release-type": "node",
+      "package-name": "taskflow-frontend"
+    },
+    "backend": {
+      "release-type": "node",
+      "package-name": "taskflow-backend"
+    }
+  }
+}
