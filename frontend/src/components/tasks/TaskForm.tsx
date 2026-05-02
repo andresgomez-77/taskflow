@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, type FormEvent } from "react";
-import { TaskStatus, type Task } from "@/types";
+import { TaskStatus, TaskPriority, type Task } from "@/types";
 import { useCreateTask, useUpdateTask } from "@/hooks/useTasks";
 import { getErrorMessage, cn } from "@/lib/utils";
 import { Input } from "@/components/ui/Input";
@@ -18,11 +18,41 @@ interface FormState {
   title: string;
   description: string;
   status: TaskStatus;
+  priority: TaskPriority;
+  dueDate: string;
 }
 
 interface FormErrors {
   title?: string;
 }
+
+// ─── Config visual de prioridades ─────────────────────────────────────────────
+const priorityConfig: Record<
+  TaskPriority,
+  { label: string; activeClass: string }
+> = {
+  [TaskPriority.LOW]: {
+    label: "🟢 Baja",
+    activeClass:
+      "border-green-500 bg-green-50 text-green-700 dark:bg-green-900/40 dark:text-green-300 dark:border-green-500",
+  },
+  [TaskPriority.MEDIUM]: {
+    label: "🟡 Media",
+    activeClass:
+      "border-yellow-500 bg-yellow-50 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300 dark:border-yellow-500",
+  },
+  [TaskPriority.HIGH]: {
+    label: "🔴 Alta",
+    activeClass:
+      "border-red-500 bg-red-50 text-red-700 dark:bg-red-900/40 dark:text-red-300 dark:border-red-500",
+  },
+};
+
+const statusOptions: { value: TaskStatus; label: string }[] = [
+  { value: TaskStatus.TODO, label: "Por hacer" },
+  { value: TaskStatus.IN_PROGRESS, label: "En progreso" },
+  { value: TaskStatus.DONE, label: "Completado" },
+];
 
 export const TaskForm = ({
   task,
@@ -36,6 +66,8 @@ export const TaskForm = ({
     title: task?.title ?? "",
     description: task?.description ?? "",
     status: task?.status ?? defaultStatus,
+    priority: task?.priority ?? TaskPriority.MEDIUM,
+    dueDate: task?.dueDate ? task.dueDate.split("T")[0] : "",
   });
   const [errors, setErrors] = useState<FormErrors>({});
 
@@ -59,6 +91,8 @@ export const TaskForm = ({
         title: task.title,
         description: task.description ?? "",
         status: task.status,
+        priority: task.priority,
+        dueDate: task.dueDate ? task.dueDate.split("T")[0] : "",
       });
     }
   }, [task]);
@@ -79,6 +113,8 @@ export const TaskForm = ({
       title: formState.title.trim(),
       description: formState.description.trim() || undefined,
       status: formState.status,
+      priority: formState.priority,
+      dueDate: formState.dueDate || undefined,
     };
     if (isEditing && task) {
       updateTask({ id: task.id, data }, { onSuccess });
@@ -92,12 +128,6 @@ export const TaskForm = ({
     if (field in errors) setErrors((prev) => ({ ...prev, [field]: undefined }));
   };
 
-  const statusOptions: { value: TaskStatus; label: string }[] = [
-    { value: TaskStatus.TODO, label: "Por hacer" },
-    { value: TaskStatus.IN_PROGRESS, label: "En progreso" },
-    { value: TaskStatus.DONE, label: "Completado" },
-  ];
-
   return (
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
       {apiError && (
@@ -108,7 +138,7 @@ export const TaskForm = ({
           {getErrorMessage(apiError)}
         </div>
       )}
-
+      {/* Título */}
       <Input
         label="Título"
         required
@@ -119,7 +149,7 @@ export const TaskForm = ({
         disabled={isPending}
         autoFocus
       />
-
+      {/* Descripción */}
       <div className="flex flex-col gap-1.5">
         <label
           htmlFor="task-description"
@@ -147,6 +177,68 @@ export const TaskForm = ({
         />
       </div>
 
+      {/* Prioridad */}
+      <div className="flex flex-col gap-1.5">
+        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          Prioridad
+        </span>
+        <div
+          className="flex gap-2"
+          role="radiogroup"
+          aria-label="Prioridad de la tarea"
+        >
+          {Object.entries(priorityConfig).map(
+            ([value, { label, activeClass }]) => (
+              <label
+                key={value}
+                className={cn(
+                  "flex flex-1 cursor-pointer items-center justify-center rounded-lg border px-2 py-2 text-xs font-medium transition-colors",
+                  formState.priority === value
+                    ? activeClass
+                    : "border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800",
+                )}
+              >
+                <input
+                  type="radio"
+                  name="priority"
+                  value={value}
+                  checked={formState.priority === value}
+                  onChange={() => handleFieldChange("priority", value)}
+                  className="sr-only"
+                  aria-label={label}
+                />
+                {label}
+              </label>
+            ),
+          )}
+        </div>
+      </div>
+      {/* Fecha límite */}
+      <div className="flex flex-col gap-1.5">
+        <label
+          htmlFor="task-duedate"
+          className="text-sm font-medium text-gray-700 dark:text-gray-300"
+        >
+          Fecha límite{" "}
+          <span className="text-gray-400 font-normal">(opcional)</span>
+        </label>
+        <input
+          id="task-duedate"
+          type="date"
+          value={formState.dueDate}
+          onChange={(e) => handleFieldChange("dueDate", e.target.value)}
+          disabled={isPending}
+          min={new Date().toISOString().split("T")[0]}
+          className={cn(
+            "w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900",
+            "bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100",
+            "focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500",
+            "disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-gray-900",
+          )}
+        />
+      </div>
+
+      {/* Estado */}
       <div className="flex flex-col gap-1.5">
         <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
           Estado
@@ -180,7 +272,7 @@ export const TaskForm = ({
           ))}
         </div>
       </div>
-
+      {/* Actions */}
       <div className="flex justify-end gap-2 pt-2 border-t border-gray-100 dark:border-gray-700">
         <Button
           type="button"

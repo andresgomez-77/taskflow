@@ -1,13 +1,15 @@
-// ─── Enums ────────────────────────────────────────────────────────────────────
-// Espejamos los enums de Prisma aquí.
-// En un monorepo avanzado esto estaría en un paquete /shared compartido.
 export enum TaskStatus {
-  TODO = 'TODO',
-  IN_PROGRESS = 'IN_PROGRESS',
-  DONE = 'DONE',
+  TODO = "TODO",
+  IN_PROGRESS = "IN_PROGRESS",
+  DONE = "DONE",
 }
 
-// ─── Entities ─────────────────────────────────────────────────────────────────
+export enum TaskPriority {
+  LOW = "LOW",
+  MEDIUM = "MEDIUM",
+  HIGH = "HIGH",
+}
+
 export interface User {
   id: string;
   email: string;
@@ -19,13 +21,14 @@ export interface Task {
   title: string;
   description: string | null;
   status: TaskStatus;
+  priority: TaskPriority;
+  dueDate: string | null;
   order: number;
-  createdAt: string; // ISO string desde la API
+  createdAt: string;
   updatedAt: string;
   userId: string;
 }
 
-// ─── API DTOs ─────────────────────────────────────────────────────────────────
 export interface AuthResponse {
   accessToken: string;
   user: User;
@@ -35,20 +38,21 @@ export interface CreateTaskData {
   title: string;
   description?: string;
   status?: TaskStatus;
+  priority?: TaskPriority;
+  dueDate?: string;
 }
 
 export interface UpdateTaskData {
   title?: string;
   description?: string;
   status?: TaskStatus;
+  priority?: TaskPriority;
+  dueDate?: string;
   order?: number;
 }
 
-// ─── Kanban ───────────────────────────────────────────────────────────────────
 export type KanbanBoard = Record<TaskStatus, Task[]>;
 
-// ─── Utility types ────────────────────────────────────────────────────────────
-// ApiError es lo que retorna nuestro HttpExceptionFilter del backend
 export interface ApiError {
   statusCode: number;
   message: string | string[];

@@ -3,7 +3,7 @@ import {
   NotFoundException,
   ForbiddenException,
 } from "@nestjs/common";
-import { TaskStatus } from "@prisma/client";
+import { TaskStatus, TaskPriority } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import type {
   CreateTaskDto,
@@ -11,33 +11,15 @@ import type {
   TaskResponseDto,
 } from "./dto/task.dto";
 
-// ─── Por qué necesitamos este helper? ────────────────────────────────────────
-// SQLite guarda status como String. Prisma lo infiere como `string`,
-// pero nuestro DTO espera `TaskStatus`. El cast se centraliza aquí — DRY.
-const mapToTaskResponse = (task: {
-  id: string;
-  title: string;
-  description: string | null;
-  status: string;
-  order: number;
-  createdAt: Date;
-  updatedAt: Date;
-  userId: string;
-}): TaskResponseDto => ({
-  ...task,
-  status: task.status as TaskStatus,
-});
-
 @Injectable()
 export class TasksService {
   constructor(private readonly prisma: PrismaService) {}
 
   async findAll(userId: string): Promise<TaskResponseDto[]> {
-    const tasks = await this.prisma.task.findMany({
+    return this.prisma.task.findMany({
       where: { userId },
       orderBy: [{ status: "asc" }, { order: "asc" }, { createdAt: "desc" }],
     });
-    return tasks.map(mapToTaskResponse);
   }
 
   async findOne(taskId: string, userId: string): Promise<TaskResponseDto> {
@@ -55,7 +37,7 @@ export class TasksService {
       );
     }
 
-    return mapToTaskResponse(task);
+    return task;
   }
 
   async create(dto: CreateTaskDto, userId: string): Promise<TaskResponseDto> {
@@ -67,17 +49,17 @@ export class TasksService {
 
     const nextOrder = lastTask ? lastTask.order + 1 : 0;
 
-    const task = await this.prisma.task.create({
+    return this.prisma.task.create({
       data: {
         title: dto.title,
         description: dto.description,
         status: dto.status ?? TaskStatus.TODO,
+        priority: dto.priority ?? TaskPriority.MEDIUM,
+        dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
         order: nextOrder,
         userId,
       },
     });
-
-    return mapToTaskResponse(task);
   }
 
   async update(
@@ -87,12 +69,13 @@ export class TasksService {
   ): Promise<TaskResponseDto> {
     await this.findOne(taskId, userId);
 
-    const task = await this.prisma.task.update({
+    return this.prisma.task.update({
       where: { id: taskId },
-      data: dto,
+      data: {
+        ...dto,
+        dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
+      },
     });
-
-    return mapToTaskResponse(task);
   }
 
   async remove(taskId: string, userId: string): Promise<{ message: string }> {
@@ -105,7 +88,6 @@ export class TasksService {
     userId: string,
   ): Promise<Record<TaskStatus, TaskResponseDto[]>> {
     const tasks = await this.findAll(userId);
-
     return {
       [TaskStatus.TODO]: tasks.filter((t) => t.status === TaskStatus.TODO),
       [TaskStatus.IN_PROGRESS]: tasks.filter(

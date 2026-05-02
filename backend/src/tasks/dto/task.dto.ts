@@ -6,34 +6,34 @@ import {
   MaxLength,
   IsInt,
   Min,
+  IsDateString,
 } from "class-validator";
-import { TaskStatus } from "@prisma/client";
+import { TaskStatus, TaskPriority } from "@prisma/client";
 
-// ─── CreateTaskDto ────────────────────────────────────────────────────────────
 export class CreateTaskDto {
   @IsString()
   @MinLength(1, { message: "El título no puede estar vacío" })
-  @MaxLength(200, { message: "El título no puede superar los 200 caracteres" })
+  @MaxLength(200)
   declare title: string;
 
   @IsString()
   @IsOptional()
-  @MaxLength(2000, {
-    message: "La descripción no puede superar los 2000 caracteres",
-  })
+  @MaxLength(2000)
   declare description?: string;
 
-  @IsEnum(TaskStatus, {
-    message: `El estado debe ser uno de: ${Object.values(TaskStatus).join(", ")}`,
-  })
+  @IsEnum(TaskStatus)
   @IsOptional()
   declare status?: TaskStatus;
+
+  @IsEnum(TaskPriority)
+  @IsOptional()
+  declare priority?: TaskPriority;
+
+  @IsDateString()
+  @IsOptional()
+  declare dueDate?: string;
 }
 
-// ─── UpdateTaskDto ────────────────────────────────────────────────────────────
-// Todos los campos son opcionales — el usuario puede actualizar parcialmente.
-// Patrón común en APIs REST: PUT (reemplaza todo) vs PATCH (actualiza parcialmente).
-// Usamos PATCH para updates.
 export class UpdateTaskDto {
   @IsString()
   @IsOptional()
@@ -46,11 +46,17 @@ export class UpdateTaskDto {
   @MaxLength(2000)
   declare description?: string;
 
-  @IsEnum(TaskStatus, {
-    message: `Estado inválido. Opciones: ${Object.values(TaskStatus).join(", ")}`,
-  })
+  @IsEnum(TaskStatus)
   @IsOptional()
   declare status?: TaskStatus;
+
+  @IsEnum(TaskPriority)
+  @IsOptional()
+  declare priority?: TaskPriority;
+
+  @IsDateString()
+  @IsOptional()
+  declare dueDate?: string;
 
   @IsInt()
   @IsOptional()
@@ -58,13 +64,13 @@ export class UpdateTaskDto {
   declare order?: number;
 }
 
-// ─── TaskResponseDto ──────────────────────────────────────────────────────────
-// Lo que el backend retorna al frontend. Tipado explícito del contrato.
 export interface TaskResponseDto {
   id: string;
   title: string;
   description: string | null;
   status: TaskStatus;
+  priority: TaskPriority;
+  dueDate: Date | null;
   order: number;
   createdAt: Date;
   updatedAt: Date;
